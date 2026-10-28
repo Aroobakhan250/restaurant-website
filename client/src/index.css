@@ -470,6 +470,15 @@ h1, h2, h3, h4, h5, h6 {
   box-sizing: border-box !important;
 }
 
+/* 2-CARDS-PER-ROW FOR EXPLORE CATEGORIES */
+.categories-2-col-grid {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 24px !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
 .menu-card {
   display: flex !important;
   flex-direction: column !important;
@@ -1020,5 +1029,20 @@ h1, h2, h3, h4, h5, h6 {
     font-size: 10.5px !important;
     border-radius: 6px !important;
     justify-content: center !important;
+  }
+}
+
+/* Categories 2-col responsive behavior */
+@media (max-width: 768px) {
+  .categories-2-col-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 12px !important;
+  }
+}
+
+@media (max-width: 539px) {
+  .categories-2-col-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
   }
 }

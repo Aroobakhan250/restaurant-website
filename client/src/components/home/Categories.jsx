@@ -90,7 +90,7 @@ export default function Categories() {
         </div>
 
         {/* Grid */}
-        <div style={styles.grid} className="universal-3-col-grid">
+        <div style={styles.grid} className="categories-2-col-grid">
           {categories.map((cat) => (
             <Link
               key={cat.id}
@@ -132,8 +132,8 @@ const styles = {
   },
   grid: {
     display: "grid",
-    gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
-    gap: "clamp(10px, 2vw, 22px)",
+    gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+    gap: "clamp(12px, 2.5vw, 26px)",
   },
   card: {
     display: "flex",
