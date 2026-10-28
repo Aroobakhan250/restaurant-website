@@ -1,0 +1,2377 @@
+FOODIES RESTAURANT WEBSITE – COMPLETE DOCUMENTATION
+
+====================================================
+1. PROJECT OVERVIEW
+====================================================
+
+1.1 Purpose
+This project is a single-page restaurant website for “Foodies”. It focuses on:
+- Presenting the restaurant’s brand, ambience, and cuisine.
+- Displaying menu items in a filterable, searchable way.
+- Providing a smooth cart experience fully on the frontend.
+- Guiding users to key actions like viewing the menu and booking a table.
+
+The application is front-end only; there is no real backend checkout or reservation processing yet. All cart operations and data live in the browser.
+
+1.2 High-Level Features
+- Modern hero section with a full-width background image and clear call-to-action buttons.
+- Category-based exploration of menu types (Fast Food, Main Course, BBQ, Desserts, Drinks, Salads, etc.).
+- “Today’s Specials” highlight section with premium cards.
+- “Why Choose Us” feature grid explaining restaurant strengths.
+- Animated statistics (customers, dishes served, years of experience, rating).
+- Auto-rotating testimonials slider with manual navigation.
+- Visual gallery with lightbox (click to enlarge dish images).
+- Dedicated Menu page with:
+  - Category tabs (e.g. Starters, Main Course, Fast Food, BBQ, Salads, Desserts, Drinks).
+  - Search bar to filter by dish name or description.
+  - Reusable menu cards with Add to Cart.
+- Global cart drawer:
+  - Persistent cart state via localStorage.
+  - Increase/decrease quantity, remove items, clear cart, total amount.
+- Basic placeholder pages for About, Contact, and Reservation to be expanded later.
+
+1.3 Target Users
+- End customers exploring Foodies’ offerings (desktop or laptop users; mobile layout is partially addressed via responsive CSS).
+- Restaurant staff, designers, or developers who want a clean base for a full restaurant app.
+
+
+====================================================
+2. TECH STACK AND RUNTIME
+====================================================
+
+2.1 Frontend
+- Framework: React (functional components, hooks).
+- Routing: react-router-dom (`BrowserRouter`, `Routes`, `Route`, `NavLink`).
+- State Management:
+  - React Context (`CartContext`) for global cart state.
+  - React hooks (`useState`, `useEffect`, `useMemo`) for UI logic.
+- Styling:
+  - Global CSS in `index.css` and `styles/global.css`.
+  - Inline style objects co-located in components for layout and typography.
+  - Utility CSS classes for containers, sections, cards, animations, and specialized sections (Categories, Specials, Gallery, Reviews).
+
+2.2 Application Type
+- Single Page Application (SPA) bootstrapped in `client/src/main.jsx` using `ReactDOM.createRoot` and `StrictMode`.
+- Likely bundled with a modern React tooling setup (e.g. Vite), based on the project structure and `main.jsx` pattern.
+
+
+====================================================
+3. PROJECT STRUCTURE (CLIENT/SRC)
+====================================================
+
+The main frontend code is located under `client/src`. Key directories:
+
+- `client/src/main.jsx`
+  - Entry point. Mounts the React app into the DOM.
+- `client/src/App.jsx`
+  - Root application component. Configures routing and wraps everything in the cart provider.
+- `client/src/pages/`
+  - `Home.jsx` – Main landing page that composes the homepage sections.
+  - `Menu.jsx` – Menu listing with filters, search, and menu cards.
+  - `About.jsx` – Simple placeholder “About Page”.
+  - `Contact.jsx` – Simple placeholder “Contact Page”.
+  - `Reservation.jsx` – Simple placeholder “Reservation Page”.
+- `client/src/components/`
+  - `Navbar.jsx` – Top navigation bar with brand, nav links, and cart button.
+  - `Footer.jsx` – Footer with copyright.
+  - `CartDrawer.jsx` – Slide-in cart sidebar.
+  - `MenuCard.jsx` – Reusable card for individual menu items.
+  - `home/*` – All homepage-specific sections (Hero, Categories, Specials, WhyChooseUs, Stats, Reviews, Gallery).
+- `client/src/context/`
+  - `CartContext.jsx` – Shared cart state and operations.
+- `client/src/data/`
+  - `menuData.js` – Static menu items used on the Menu page.
+- `client/src/styles/`
+  - `global.css` – Theme variables, layout helpers, animations, sections, and advanced styling for Categories and Specials.
+- `client/src/index.css`
+  - Base body styling and font reset (small file).
+- `client/src/assets/`
+  - Images such as category thumbnails (e.g. `assets/categories/*.jpg`) and standard assets like `react.svg`.
+
+
+====================================================
+4. APPLICATION BOOTSTRAP AND ROUTING
+====================================================
+
+4.1 Entry Point (`main.jsx`)
+- Imports `StrictMode` from React and `createRoot` from `react-dom/client`.
+- Imports global stylesheet: `./index.css`.
+- Imports root app component: `./App.jsx`.
+- Mounts the app:
+  - Looks up the DOM element with id `root`.
+  - Renders `<App />` inside `<StrictMode>`, which helps detect potential issues during development.
+
+4.2 Root Component and Routing (`App.jsx`)
+- React Router setup:
+  - Uses `BrowserRouter` (aliased as `Router`) to enable client-side routing.
+  - Declares `Routes` with multiple `Route` entries:
+    - `/` → `Home`
+    - `/menu` → `Menu`
+    - `/reservation` → `Reservation`
+    - `/contact` → `Contact`
+    - `/about` → `About`
+- Layout:
+  - Wraps the whole router with `<CartProvider>` so any component can access cart state.
+  - Renders `Navbar` above all routes (always visible).
+  - Renders `CartDrawer` below routes (overlays as a drawer when opened).
+  - Footer is handled separately in some pages or can be added globally if desired.
+
+4.3 Navigation Bar (`Navbar.jsx`)
+- Uses `NavLink` from `react-router-dom` with an inline `linkStyle` callback to:
+  - Highlight the active route via:
+    - Color change (white when active).
+    - Underline/bottom border color when active.
+    - Slight translateY transform.
+- Brand section:
+  - Colored gradient dot.
+  - Text “Foodies” with an emoji.
+- Links:
+  - Home `/`
+  - Menu `/menu`
+  - Reservation `/reservation`
+  - Contact `/contact`
+  - About `/about`
+- Cart button:
+  - Uses `useCart()` to access `cartCount` and `toggleCart`.
+  - Shows a badge with the total count of items in the cart.
+  - On click, toggles the global cart drawer open/close.
+
+
+====================================================
+5. SHARED CART STATE AND DATA FLOW
+====================================================
+
+5.1 Cart Context (`CartContext.jsx`)
+- Creates `CartContext` with React’s `createContext`.
+- Storage key: `"foodies_cart_v1"` in `localStorage`.
+
+5.2 State Variables
+- `isOpen` (boolean):
+  - Controls whether the cart drawer is visible.
+  - Modified by `openCart`, `closeCart`, and `toggleCart`.
+- `cart` (array of items):
+  - Each item has at least: `id`, `name`, `price`, `category`, `desc`, `emoji`, and `qty`.
+  - Initialized from `localStorage` on first render.
+    - Tries to parse stored JSON. If parsing fails, defaults to an empty array.
+
+5.3 Derived Values
+- `cartCount` (`useMemo`):
+  - Sum of `qty` across all cart items.
+  - Used for the badge in the navbar cart button.
+- `total` (`useMemo`):
+  - Sum of `price * qty` across all items.
+  - Displayed in the cart drawer footer.
+
+5.4 Persistence
+- `useEffect` writes the latest cart to `localStorage` whenever the `cart` state changes:
+  - `localStorage.setItem(STORAGE_KEY, JSON.stringify(cart))`
+  - Ensures cart is preserved across page refreshes.
+
+5.5 Cart Operations
+- `openCart()` – sets `isOpen` to `true`.
+- `closeCart()` – sets `isOpen` to `false`.
+- `toggleCart()` – toggles `isOpen`.
+- `addToCart(product)`:
+  - Checks if an item with the same `id` exists in the cart.
+  - If found:
+    - Increments its `qty` by 1.
+  - If not found:
+    - Adds a new item with `qty: 1`.
+  - Finally opens the cart (`setIsOpen(true)`).
+- `removeFromCart(id)`:
+  - Filters out the item whose `id` matches.
+- `incQty(id)`:
+  - Maps over `cart` and for the matching id, increments `qty` by 1.
+- `decQty(id)`:
+  - Decrements `qty` by 1 for the matching id.
+  - Removes any items whose `qty` drops to 0 or below.
+- `clearCart()`:
+  - Empties the entire cart array.
+
+5.6 Hook Usage
+- `useCart()`:
+  - Custom hook that wraps `useContext(CartContext)`.
+  - Throws an error if used outside of `<CartProvider>`, enforcing proper usage.
+
+5.7 End-to-End Cart Flow
+1. User visits `/menu`.
+2. `Menu.jsx` renders `MenuCard` components for each item in `menuData`.
+3. User clicks “Add” on a `MenuCard`.
+4. `MenuCard` calls `addToCart(item)` from `useCart()`.
+5. `CartContext` updates the `cart` state:
+   - Either increments an existing item’s quantity or adds a new one.
+   - Sets `isOpen` to `true`.
+6. `cartCount` gets recomputed and the badge in `Navbar` updates.
+7. `CartDrawer` becomes visible:
+   - Shows a list of cart items.
+   - Shows total amount and action buttons.
+8. Inside the cart, user can:
+   - Increase/decrease quantity.
+   - Remove a single item.
+   - Clear the entire cart.
+9. Changes are instantly written to `localStorage` and reflected in UI.
+
+
+====================================================
+6. PAGES
+====================================================
+
+6.1 Home Page (`Home.jsx`)
+- Imports and composes the main homepage sections:
+  - `Hero`
+  - `Categories`
+  - `Specials` (Today’s Specials)
+  - `WhyChooseUs`
+  - `Stats`
+  - `Reviews`
+  - `Gallery`
+- The page acts as a layout container only; logic is inside each section component.
+
+6.2 Menu Page (`Menu.jsx`)
+- Purpose:
+  - Central location for menu exploration and adding items to cart.
+
+- Inputs:
+  - Imports `MenuCard` for presentation.
+  - Imports `menuData` from `data/menuData.js`.
+
+- Derived Data:
+  - `categories` (`useMemo`):
+    - Builds a unique list of categories from `menuData`.
+    - Prepends “All” to allow showing all items.
+  - `active` (`useState`):
+    - Currently selected category (default: “All”).
+  - `query` (`useState`):
+    - Search text for filtering.
+  - `filtered` (`useMemo`):
+    - Filters `menuData` according to:
+      - Category: show all or only matching category.
+      - Search: case-insensitive match on `name` or `desc`.
+
+- Layout and Controls:
+  - Header:
+    - “Our Menu” title and short description.
+  - Search bar:
+    - Text input bound to `query`.
+    - Clear button resets `query` to empty.
+  - Category tabs:
+    - Rendered as buttons from `categories`.
+    - Active tab has a distinct background/border color.
+  - Result count:
+    - Shows “Showing X items” where X is `filtered.length`.
+  - Cards grid:
+    - Renders each `filtered` item as a `MenuCard`.
+
+6.3 About, Contact, Reservation Pages
+- `About.jsx`:
+  - Returns a simple `<h1>` with “About Page” and basic padding.
+- `Contact.jsx`:
+  - Returns a simple `<h1>` with “Contact Page”.
+- `Reservation.jsx`:
+  - Returns a simple `<h1>` with “Reservation Page”.
+- These are placeholders and are intended to be expanded with forms, contact details, and reservation logic in the future.
+
+
+====================================================
+7. HOMEPAGE SECTIONS (COMPONENTS UNDER HOME/)
+====================================================
+
+7.1 Hero (`Hero.jsx`)
+- Full-width hero section with background image ("/images/hero.jpg").
+- Overlay gradient for improved text contrast.
+- Content:
+  - Pill text: “Premium Taste • Cozy Vibe • Fresh Food”.
+  - Heading emphasizing “Restaurant-Level Taste” with colored words.
+  - Supporting paragraph describing fresh ingredients and hygienic kitchen.
+  - Primary actions:
+    - “View Menu →” (NavLink to `/menu`, styled as `btn btnPrimary`).
+    - “Book Table” (NavLink to `/reservation`, styled as `btn btnGhost`).
+- Goal:
+  - Immediately communicate brand quality and push users towards core actions (menu, reservation).
+
+7.2 Categories (`Categories.jsx`)
+- Displays a grid of rich “category cards” that link to the Menu page.
+- Data:
+  - Static `cats` array with each category:
+    - `id`, `title`, `desc`, `color`, `image` (from `assets/categories/*.jpg`).
+  - Examples:
+    - Fast Food – Burgers, pizza & fries.
+    - Main Course – Desi & continental.
+    - BBQ, Desserts, Drinks, Salads, Seafood, Breakfast.
+- Layout:
+  - Section wrapper `catSection` with animated, glowing background layers:
+    - `.catGlowLayer`, `.catGlowLayer2`, `.catGlowLayer3`, `.catGrain`.
+  - Heading:
+    - “Explore Categories” with subtitle “Tap a category to explore menu faster.”
+  - Grid:
+    - `.catGrid4` – 4 columns on desktop, fewer on smaller screens.
+  - Each category card uses:
+    - `.luxCard`, `.luxCardImage`, `.luxCardContent`, `.luxCardFooter`.
+    - Inline CSS variable `--glow` controlling the color theme of the card.
+- Interaction:
+  - Each card is a `NavLink` that navigates to `/menu`.
+  - While cards don’t filter automatically at navigation time yet, they act as shortcuts to the menu view.
+
+7.3 Today’s Specials (`Specials.jsx` / `TodaysSpecials`)
+- Highlights a curated set of 4 “special” dishes:
+  - Each has `id`, `name`, `price`, `tag`, `color`, `img`.
+  - Example dishes: Grilled Chicken, Italian Pasta, Cheese Burger, Pepperoni Pizza.
+- Layout:
+  - Section class `specialsSection` with glow backgrounds `.specialsGlow`, `.specialsGlow2`.
+  - Heading: “Today’s Specials” with a short subtitle about limited servings.
+  - Grid: `.specialsGrid` with 4 responsive cards (`.specialCard`).
+  - Each card:
+    - Top image with overlay (`.specialImg`) and a badge (`.specialTag`).
+    - Body with dish name and price (`.specialPrice`).
+    - Actions:
+      - Primary button “Add to Cart” (`.specialBtnPrimary`) – UI only; currently not wired into `CartContext`.
+      - Ghost button linking to `/menu` (`.specialBtnGhost`).
+
+7.4 Why Choose Us (`WhyChooseUs.jsx`)
+- Explains the restaurant’s unique selling points.
+- Data:
+  - `features` array containing:
+    - Fresh Ingredients – Emphasis on daily fresh and hygienic ingredients.
+    - Fast Service – Quick preparation without compromising quality.
+    - Expert Chefs – Experienced chefs in fine dining.
+    - Top Rated – Rated 4.8+ by many customers.
+- Layout:
+  - Section uses shared `.section` and `.container`.
+  - Header with title “Why Choose Us” and subtitle “We don’t just serve food — we serve experience.”
+  - Grid of cards:
+    - Each card shows an emoji icon, title, and description.
+    - Styled as glassmorphism cards with gradients and border.
+
+7.5 Stats (`Stats.jsx`)
+- Displays animated counters summarizing achievements:
+  - Happy Customers – 10000+.
+  - Dishes Served – 500+.
+  - Years Experience – 5+.
+  - Average Rating – 4.8⭐.
+- Implementation:
+  - `stats` array computed via `useMemo`.
+  - `StatCard` child component:
+    - Uses `useState` to track the animated display value.
+    - Uses `useEffect` and `requestAnimationFrame` to animate from 0 to the target value over ~900ms with easing.
+    - Handles both integer and decimal values (e.g. rating).
+  - Layout:
+    - Grid inside a card-like container with gradient background and border.
+    - Emphasizes numbers via gradient text and supporting labels.
+
+7.6 Reviews (`Reviews.jsx`)
+- Testimonial slider showing real-like customer reviews.
+- Data:
+  - `reviews` array (using `useMemo`) with fields:
+    - `id`, `name`, `role`, `text`, `rating`.
+  - Roles include: Food Lover, Regular Customer, Blogger, Family Visit, Student.
+- Behavior:
+  - `active` index (`useState`) indicates the currently focused review.
+  - `useEffect` sets an interval (~3200ms) to auto-advance to the next review.
+  - `prev()` and `next()` functions for manual navigation via arrow buttons.
+  - Internally computes left and right indices to show a 3-card carousel:
+    - Left (previous), center (current), right (next).
+- Layout:
+  - Section background uses radial gradients and borders to create a distinct strip on the page.
+  - Header section:
+    - Kicker “Testimonials”.
+    - Title “What Customers Say”.
+    - Supporting text.
+  - Slider:
+    - Left/right arrow buttons.
+    - Middle area with three `ReviewCard` components.
+  - Each `ReviewCard`:
+    - Shows star rating using repeated “⭐” characters, with muted stars for unfilled ones.
+    - Review text in quotes.
+    - User row with avatar (first letter of name), name, and role.
+  - Dots navigation:
+    - Small buttons representing each review.
+    - Active dot is wider and colored.
+
+7.7 Gallery (`Gallery.jsx`)
+- Visual gallery of signature dishes with a click-to-zoom lightbox.
+- Data:
+  - `dishes` array via `useMemo` with:
+    - `id`, `title`, `img` (URLs from Unsplash with query parameters).
+  - Dishes include burgers, BBQ platters, pizza, pasta, salad, dessert, coffee, steak.
+- State:
+  - `active` dish (`useState`), initially `null`.
+  - When a tile is clicked, `active` is set to the dish object.
+- Layout:
+  - Section header:
+    - Title “Our Signature Dishes”.
+    - Subtitle about delicious meals prepared with love.
+  - Grid:
+    - Responsive grid of cards using inline styles and container classes.
+    - Each card has:
+      - Image with overlay gradient.
+      - Caption text at bottom left.
+  - Lightbox:
+    - When `active` is set:
+      - A full-screen overlay appears.
+      - Centered card shows a larger image and title.
+      - Close button (✕) to close the lightbox.
+      - Clicking on the dark overlay also closes it.
+
+
+====================================================
+8. GENERIC SHARED COMPONENTS
+====================================================
+
+8.1 Menu Card (`MenuCard.jsx`)
+- Props:
+  - `item` – one entry from `menuData` (contains id, name, price, desc, category, emoji).
+- Behavior:
+  - Uses `useCart()` to get `addToCart`.
+  - When the “Add” button is clicked:
+    - Calls `addToCart(item)` which:
+      - Updates global cart.
+      - Opens the cart drawer.
+- Layout:
+  - Displays:
+    - Emoji inside a stylized rounded box.
+    - Category badge.
+    - Dish name and short description.
+    - Price and an “Add” button aligned in a footer row.
+  - Card uses glassmorphism-style gradients, border, shadow, and hover transitions.
+
+8.2 Cart Drawer (`CartDrawer.jsx`)
+- Uses `useCart()` to access:
+  - `isOpen`, `closeCart`, `cart`, `total`, `incQty`, `decQty`, `removeFromCart`, `clearCart`.
+- Backdrop:
+  - Full-screen semi-transparent overlay.
+  - `opacity` and `pointerEvents` depend on `isOpen` to enable/disable interaction.
+- Drawer:
+  - Fixed position on the right, 100% viewport height.
+  - Transforms in/out using translateX based on `isOpen`.
+  - Contains:
+    - Header with title “Your Cart” and close (✕) button.
+    - If `cart` is empty:
+      - Shows an empty state with an emoji and guidance to add items from the menu.
+    - Else:
+      - Scrollable list of items:
+        - Each item shows emoji, name, price, and controls:
+          - Quantity decrement (−), display, increment (+).
+          - “Remove” button.
+      - Footer:
+        - Total amount (formatted as “Rs {total}”).
+        - “Clear Cart” button.
+        - “Checkout (UI only)” button (currently no backend integration).
+        - Note indicating that real checkout backend will be connected later.
+
+8.3 Footer (`Footer.jsx`)
+- Simple footer displayed at the bottom of the site.
+- Shows:
+  - “© {currentYear} Foodies Restaurant”.
+- Uses inline styling for spacing and background color.
+
+
+====================================================
+9. DATA LAYER – MENU ITEMS
+====================================================
+
+9.1 `menuData.js`
+- Exports `menuData`, an array of 50 menu items organized with inline comments by category.
+- Categories and approximate counts:
+  - Starters – 8 items (French Fries, Chicken Nuggets, Garlic Bread, Onion Rings, etc.).
+  - Main Course – 10 items (Chicken Biryani, Mutton Karahi, Butter Chicken, etc.).
+  - Fast Food – 10 items (Zinger Burger, Pizza variants, Shawarma, Club Sandwich, Broast, etc.).
+  - BBQ – 6 items (Chicken Tikka, Malai Boti, Seekh Kabab, BBQ Platter, etc.).
+  - Salads – 4 items (Russian Salad, Caesar Salad, Greek Salad, Chicken Salad).
+  - Desserts – 6 items (Chocolate Cake, Brownie, Ice Cream, Kheer, Gulab Jamun, Cheesecake).
+  - Drinks – 6 items (Cold Drink, Fresh Lime, Mint Margarita, Iced Coffee, Tea, Mineral Water).
+- Each item includes:
+  - `id` (unique numeric identifier).
+  - `name`.
+  - `price` (numeric, in rupees).
+  - `category` (string; used for filtering).
+  - `desc` (short description).
+  - `emoji` (for quick visual identification).
+
+9.2 Usage
+- `Menu.jsx`:
+  - Uses `menuData` to:
+    - Compute unique categories.
+    - Build `filtered` list for rendering.
+  - Passes each item to `MenuCard`.
+- `CartContext`:
+  - Stores menu item data (plus quantity) when items are added.
+
+
+====================================================
+10. STYLING AND UX
+====================================================
+
+10.1 Global Theme (`styles/global.css`)
+- CSS Custom Properties defined under `:root`:
+  - `--bg`, `--card`, `--card2`, `--text`, `--muted`, `--border`, `--accent`, `--accent2`, `--shadow`.
+- Global reset:
+  - Removes default margins/padding and sets `box-sizing: border-box`.
+  - Ensures `html, body` take full height.
+- Body background:
+  - Multi-layer radial gradients combined with the solid background color.
+  - Gives a premium dark theme with orange/pink/blue glows.
+- Helpers:
+  - `.container` – central content width with responsive max width.
+  - `.section` – vertical padding.
+  - `.card` – shared glassmorphism card style.
+- Animations:
+  - `.fadeUp` with `@keyframes fadeUp` for smooth entrance.
+  - Delay classes `.delay1`, `.delay2`, etc.
+- Buttons:
+  - `.btn`, `.btnPrimary`, `.btnGhost` with hover and active states.
+  - Primary button uses a gradient and animated shine effect on hover.
+  - Ghost button uses subtle borders and background.
+- Category and Specials styling:
+  - `catSection`, glow layers, grain overlay, grid, and card classes (`luxCard` etc.).
+  - `specialsSection`, radial glows, `specialsGrid`, `specialCard`, `specialImg`, `specialTag`, `specialBody`, `specialPrice`, `specialBtns`, `specialBtnPrimary`, `specialBtnGhost`.
+- Gallery:
+  - `.galleryTile` hover behavior to slightly zoom background and adjust border.
+
+10.2 Base Styles (`index.css`)
+- Very minimal:
+  - Sets body margin to 0.
+  - Applies default font.
+  - `global.css` extends and overrides it for the full theme.
+
+10.3 Inline Styles
+- Many components define inline style objects for:
+  - Layout (flex/grid).
+  - Typography (font size, weights).
+  - Colors and backgrounds.
+  - Spacing (margins and paddings).
+- Combined with global classes for a hybrid styling approach.
+
+
+====================================================
+11. HOW TO RUN AND DEVELOP
+====================================================
+
+NOTE: Exact commands may depend on the actual tooling (Vite, CRA, etc.), but the typical setup for this structure is:
+
+11.1 Installation
+1. Open a terminal in the root project folder.
+2. Navigate to the client folder:
+   - `cd client`
+3. Install dependencies:
+   - `npm install`
+
+11.2 Development Server
+- Start the dev server (Vite or similar):
+  - `npm run dev`
+- Open the browser at the URL printed in the terminal (commonly `http://localhost:5173` or similar).
+
+11.3 Production Build
+- Create a production build:
+  - `npm run build`
+- Preview build (if configured):
+  - `npm run preview`
+
+
+====================================================
+12. EXTENDING THE PROJECT
+====================================================
+
+12.1 Adding New Menu Items
+1. Open `client/src/data/menuData.js`.
+2. Append a new object to the `menuData` array with:
+   - Unique `id`.
+   - `name`, `price`, `category`, `desc`, `emoji`.
+3. The new item will automatically appear on the `Menu` page and can be filtered via category and search.
+
+12.2 Wiring Specials to Cart
+1. Import `useCart` into the Specials component.
+2. Replace the UI-only “Add to Cart” button with a call to `addToCart` for the corresponding data structure (id, name, price, etc.).
+3. Optionally share data between `menuData` and `Specials` to avoid duplication.
+
+12.3 Enhancing About/Contact/Reservation Pages
+- `About`:
+  - Add restaurant story, chef profiles, timelines, and images.
+- `Contact`:
+  - Add contact form, phone number, address, map integration (Google Maps embed).
+- `Reservation`:
+  - Add form with date/time selection, guests count, and contact details.
+  - Connect to a backend API when ready.
+
+12.4 Connecting Real Checkout
+- Replace the “Checkout (UI only)” button’s placeholder behavior in `CartDrawer` with:
+  - API call to a backend that processes the order.
+  - Or redirect to a payment page, depending on the architecture.
+- Because cart data is centrally stored in `CartContext`, integrating with a backend is straightforward: you can send the `cart` and `total` to a server endpoint.
+
+
+====================================================
+13. SUMMARY
+====================================================
+
+This restaurant website is a well-structured React SPA focusing on a premium dark UI, clear navigation, and an interactive menu + cart experience. The codebase separates concerns into pages, shared components, homepage sections, context for global state, and a data module for menu information. Styling uses a combination of global CSS (with themes and utilities) and inline styles to deliver a modern, animated, and responsive interface. The frontend is ready to be extended with richer pages (About, Contact, Reservation) and a real backend for reservations and checkout.
+
+
+====================================================
+14. PROJECT FOLDER STRUCTURE (TREE VIEW)
+====================================================
+
+High-level view of the important folders and files in this project:
+
+restaurant-website/
+├─ document.txt               (this documentation file)
+├─ .vscode/
+│  └─ launch.json             (VS Code launch configuration)
+└─ client/
+   └─ src/
+      ├─ main.jsx
+      ├─ App.jsx
+      ├─ index.css
+      ├─ styles/
+      │  └─ global.css
+      ├─ assets/
+      │  ├─ react.svg
+      │  └─ categories/
+      │     ├─ fastfood.jpg
+      │     ├─ maincourse.jpg
+      │     ├─ bbq.jpg
+      │     ├─ desserts.jpg
+      │     ├─ drinks.jpg
+      │     ├─ salads.jpg
+      │     ├─ seafood.jpg
+      │     └─ breakfast.jpg
+      ├─ context/
+      │  └─ CartContext.jsx
+      ├─ data/
+      │  └─ menuData.js
+      ├─ components/
+      │  ├─ Navbar.jsx
+      │  ├─ Footer.jsx
+      │  ├─ CartDrawer.jsx
+      │  ├─ MenuCard.jsx
+      │  └─ home/
+      │     ├─ Hero.jsx
+      │     ├─ Categories.jsx
+      │     ├─ Specials.jsx
+      │     ├─ WhyChooseUs.jsx
+      │     ├─ Stats.jsx
+      │     ├─ Reviews.jsx
+      │     └─ Gallery.jsx
+      └─ pages/
+         ├─ Home.jsx
+         ├─ Menu.jsx
+         ├─ About.jsx
+         ├─ Contact.jsx
+         └─ Reservation.jsx
+
+Note: The root folder may also include standard project configuration files such as package.json, lock files, and bundler configuration files depending on the exact setup used when creating the React project.
+
+
+====================================================
+15. KEY SOURCE CODE LISTINGS
+====================================================
+
+Below are the main source files for this project, included here for complete reference.
+
+----------------------------------------------------
+15.1 client/src/main.jsx
+----------------------------------------------------
+
+import { StrictMode } from 'react'
+import { createRoot } from 'react-dom/client'
+import './index.css'
+import App from './App.jsx'
+
+createRoot(document.getElementById('root')).render(
+  <StrictMode>
+    <App />
+  </StrictMode>,
+)
+
+
+----------------------------------------------------
+15.2 client/src/App.jsx
+----------------------------------------------------
+
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import Navbar from "./components/Navbar";
+import CartDrawer from "./components/CartDrawer";
+import { CartProvider } from "./context/CartContext";
+
+import Home from "./pages/Home";
+import Menu from "./pages/Menu";
+import Reservation from "./pages/Reservation";
+import Contact from "./pages/Contact";
+import About from "./pages/About";
+
+export default function App() {
+  return (
+    <CartProvider>
+      <Router>
+        <Navbar />
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/menu" element={<Menu />} />
+          <Route path="/reservation" element={<Reservation />} />
+          <Route path="/contact" element={<Contact />} />
+          <Route path="/about" element={<About />} />
+        </Routes>
+
+        <CartDrawer />
+      </Router>
+    </CartProvider>
+  );
+}
+
+
+----------------------------------------------------
+15.3 client/src/context/CartContext.jsx
+----------------------------------------------------
+
+import { createContext, useContext, useEffect, useMemo, useState } from "react";
+
+const CartContext = createContext(null);
+
+const STORAGE_KEY = "foodies_cart_v1";
+
+export function CartProvider({ children }) {
+  const [isOpen, setIsOpen] = useState(false);
+
+  const [cart, setCart] = useState(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(cart));
+  }, [cart]);
+
+  const cartCount = useMemo(
+    () => cart.reduce((sum, item) => sum + item.qty, 0),
+    [cart]
+  );
+
+  const total = useMemo(
+    () => cart.reduce((sum, item) => sum + item.price * item.qty, 0),
+    [cart]
+  );
+
+  function openCart() {
+    setIsOpen(true);
+  }
+  function closeCart() {
+    setIsOpen(false);
+  }
+  function toggleCart() {
+    setIsOpen((v) => !v);
+  }
+
+  function addToCart(product) {
+    setCart((prev) => {
+      const found = prev.find((x) => x.id === product.id);
+      if (found) {
+        return prev.map((x) =>
+          x.id === product.id ? { ...x, qty: x.qty + 1 } : x
+        );
+      }
+      return [...prev, { ...product, qty: 1 }];
+    });
+    setIsOpen(true);
+  }
+
+  function removeFromCart(id) {
+    setCart((prev) => prev.filter((x) => x.id !== id));
+  }
+
+  function incQty(id) {
+    setCart((prev) =>
+      prev.map((x) => (x.id === id ? { ...x, qty: x.qty + 1 } : x))
+    );
+  }
+
+  function decQty(id) {
+    setCart((prev) =>
+      prev
+        .map((x) => (x.id === id ? { ...x, qty: x.qty - 1 } : x))
+        .filter((x) => x.qty > 0)
+    );
+  }
+
+  function clearCart() {
+    setCart([]);
+  }
+
+  const value = {
+    cart,
+    cartCount,
+    total,
+    isOpen,
+    openCart,
+    closeCart,
+    toggleCart,
+    addToCart,
+    removeFromCart,
+    incQty,
+    decQty,
+    clearCart,
+  };
+
+  return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
+}
+
+export function useCart() {
+  const ctx = useContext(CartContext);
+  if (!ctx) throw new Error("useCart must be used inside CartProvider");
+  return ctx;
+}
+
+
+----------------------------------------------------
+15.4 client/src/components/Navbar.jsx
+----------------------------------------------------
+
+import { NavLink } from "react-router-dom";
+import { useCart } from "../context/CartContext";
+
+export default function Navbar() {
+  const { cartCount, toggleCart } = useCart();
+
+  return (
+    <header style={styles.header}>
+      <div style={styles.inner} className="container">
+        <div style={styles.brand}>
+          <span style={styles.dot} />
+          <span style={styles.brandText}>Foodies</span>
+          <span style={{ opacity: 0.7 }}>🍽️</span>
+        </div>
+
+        <nav style={styles.nav}>
+          <NavLink to="/" style={linkStyle} end>
+            Home
+          </NavLink>
+          <NavLink to="/menu" style={linkStyle}>
+            Menu
+          </NavLink>
+          <NavLink to="/reservation" style={linkStyle}>
+            Reservation
+          </NavLink>
+          <NavLink to="/contact" style={linkStyle}>
+            Contact
+          </NavLink>
+          <NavLink to="/about" style={linkStyle}>
+            About
+          </NavLink>
+
+          {/* Cart Button */}
+          <button onClick={toggleCart} style={styles.cartBtn}>
+            🛒 <span style={{ fontWeight: 950 }}>Cart</span>
+            <span style={styles.badge}>{cartCount}</span>
+          </button>
+        </nav>
+      </div>
+    </header>
+  );
+}
+
+function linkStyle({ isActive }) {
+  return {
+    ...styles.link,
+    color: isActive ? "white" : "rgba(255,255,255,0.78)",
+    borderBottomColor: isActive ? "rgba(245,158,11,0.95)" : "transparent",
+    transform: isActive ? "translateY(-1px)" : "translateY(0px)",
+  };
+}
+
+const styles = {
+  header: {
+    position: "sticky",
+    top: 0,
+    zIndex: 50,
+    backdropFilter: "blur(12px)",
+    background:
+      "linear-gradient(180deg, rgba(10,10,16,0.88), rgba(10,10,16,0.55))",
+    borderBottom: "1px solid rgba(255,255,255,0.10)",
+  },
+  inner: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: "14px 0",
+  },
+  brand: {
+    display: "flex",
+    alignItems: "center",
+    gap: 10,
+    fontWeight: 950,
+    letterSpacing: 0.3,
+  },
+  dot: {
+    width: 12,
+    height: 12,
+    borderRadius: 999,
+    background: "linear-gradient(135deg, #f59e0b, #ff4d6d)",
+    boxShadow: "0 0 0 6px rgba(245,158,11,0.12)",
+  },
+  brandText: { fontSize: 16 },
+
+  nav: {
+    display: "flex",
+    gap: 18,
+    alignItems: "center",
+    flexWrap: "wrap",
+  },
+  link: {
+    textDecoration: "none",
+    fontWeight: 900,
+    padding: "8px 6px",
+    borderBottom: "2px solid",
+    transition: "color .18s ease, border-color .18s ease, transform .18s ease",
+  },
+
+  cartBtn: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 8,
+    padding: "10px 12px",
+    borderRadius: 14,
+    border: "1px solid rgba(255,255,255,0.14)",
+    background: "rgba(255,255,255,0.06)",
+    color: "white",
+    cursor: "pointer",
+    fontWeight: 900,
+  },
+  badge: {
+    minWidth: 22,
+    height: 22,
+    borderRadius: 999,
+    display: "grid",
+    placeItems: "center",
+    padding: "0 6px",
+    background: "rgba(245,158,11,0.95)",
+    color: "#111",
+    fontSize: 12,
+    fontWeight: 950,
+  },
+};
+
+
+----------------------------------------------------
+15.5 client/src/components/CartDrawer.jsx
+----------------------------------------------------
+
+import { useCart } from "../context/CartContext";
+
+export default function CartDrawer() {
+  const {
+    isOpen,
+    closeCart,
+    cart,
+    total,
+    incQty,
+    decQty,
+    removeFromCart,
+    clearCart,
+  } = useCart();
+
+  return (
+    <>
+      {/* Backdrop */}
+      <div
+        onClick={closeCart}
+        style={{
+          ...styles.backdrop,
+          opacity: isOpen ? 1 : 0,
+          pointerEvents: isOpen ? "auto" : "none",
+        }}
+      />
+
+      {/* Drawer */}
+      <aside
+        style={{
+          ...styles.drawer,
+          transform: isOpen ? "translateX(0)" : "translateX(100%)",
+        }}
+      >
+        <div style={styles.header}>
+          <h2 style={{ margin: 0 }}>Your Cart</h2>
+          <button onClick={closeCart} style={styles.iconBtn}>
+            ✕
+          </button>
+        </div>
+
+        {cart.length === 0 ? (
+          <div style={styles.empty}>
+            <div style={{ fontSize: 34 }}>🛒</div>
+            <p style={{ marginTop: 10, opacity: 0.8 }}>
+              Cart is empty. Add something from Menu 🙂
+            </p>
+          </div>
+        ) : (
+          <>
+            <div style={styles.list}>
+              {cart.map((item) => (
+                <div key={item.id} style={styles.item}>
+                  <div style={styles.left}>
+                    <div style={styles.emojiBox}>{item.emoji || "🍽️"}</div>
+                    <div>
+                      <div style={styles.name}>{item.name}</div>
+                      <div style={styles.muted}>Rs {item.price}</div>
+                    </div>
+                  </div>
+
+                  <div style={styles.right}>
+                    <div style={styles.qtyRow}>
+                      <button
+                        onClick={() => decQty(item.id)}
+                        style={styles.qtyBtn}
+                      >
+                        −
+                      </button>
+                      <div style={styles.qty}>{item.qty}</div>
+                      <button
+                        onClick={() => incQty(item.id)}
+                        style={styles.qtyBtn}
+                      >
+                        +
+                      </button>
+                    </div>
+
+                    <button
+                      onClick={() => removeFromCart(item.id)}
+                      style={styles.remove}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div style={styles.footer}>
+              <div style={styles.totalRow}>
+                <span style={{ opacity: 0.8, fontWeight: 800 }}>Total</span>
+                <span style={styles.total}>Rs {total}</span>
+              </div>
+
+              <button onClick={clearCart} style={styles.clearBtn}>
+                Clear Cart
+              </button>
+
+              <button style={styles.checkoutBtn}>
+                Checkout (UI only)
+              </button>
+
+              <div style={styles.note}>
+                * Checkout backend baad me connect karenge.
+              </div>
+            </div>
+          </>
+        )}
+      </aside>
+    </>
+  );
+}
+
+const styles = {
+  backdrop: {
+    position: "fixed",
+    inset: 0,
+    background: "rgba(0,0,0,0.55)",
+    transition: "opacity .2s ease",
+    zIndex: 60,
+  },
+  drawer: {
+    position: "fixed",
+    top: 0,
+    right: 0,
+    height: "100vh",
+    width: "min(420px, 92vw)",
+    background: "rgba(14,14,20,0.95)",
+    borderLeft: "1px solid rgba(255,255,255,0.12)",
+    backdropFilter: "blur(12px)",
+    boxShadow: "0 18px 60px rgba(0,0,0,0.6)",
+    transition: "transform .22s ease",
+    zIndex: 70,
+    display: "flex",
+    flexDirection: "column",
+  },
+  header: {
+    padding: 16,
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    borderBottom: "1px solid rgba(255,255,255,0.10)",
+  },
+  iconBtn: {
+    border: "1px solid rgba(255,255,255,0.14)",
+    background: "rgba(255,255,255,0.06)",
+    color: "white",
+    borderRadius: 12,
+    padding: "8px 10px",
+    cursor: "pointer",
+    fontWeight: 900,
+  },
+  empty: {
+    padding: 22,
+    textAlign: "center",
+  },
+  list: {
+    padding: 16,
+    overflowY: "auto",
+    flex: 1,
+    display: "flex",
+    flexDirection: "column",
+    gap: 12,
+  },
+  item: {
+    border: "1px solid rgba(255,255,255,0.12)",
+    background: "rgba(255,255,255,0.06)",
+    borderRadius: 16,
+    padding: 12,
+    display: "flex",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  left: { display: "flex", gap: 10, alignItems: "center" },
+  emojiBox: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    display: "grid",
+    placeItems: "center",
+    background: "rgba(245,158,11,0.16)",
+    border: "1px solid rgba(245,158,11,0.28)",
+    fontSize: 20,
+  },
+  name: { fontWeight: 950 },
+  muted: { opacity: 0.75, fontWeight: 700, marginTop: 2, fontSize: 12 },
+  right: { display: "flex", flexDirection: "column", gap: 8, alignItems: "end" },
+  qtyRow: { display: "flex", alignItems: "center", gap: 8 },
+  qtyBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 12,
+    border: "1px solid rgba(255,255,255,0.14)",
+    background: "rgba(255,255,255,0.06)",
+    color: "white",
+    cursor: "pointer",
+    fontWeight: 950,
+    fontSize: 16,
+  },
+  qty: { width: 26, textAlign: "center", fontWeight: 950 },
+  remove: {
+    border: "none",
+    background: "transparent",
+    color: "rgba(255,255,255,0.75)",
+    cursor: "pointer",
+    fontWeight: 800,
+    fontSize: 12,
+    textDecoration: "underline",
+  },
+  footer: {
+    padding: 16,
+    borderTop: "1px solid rgba(255,255,255,0.10)",
+    display: "flex",
+    flexDirection: "column",
+    gap: 10,
+  },
+  totalRow: { display: "flex", justifyContent: "space-between", alignItems: "center" },
+  total: { fontWeight: 950, color: "#f59e0b" },
+  clearBtn: {
+    border: "1px solid rgba(255,255,255,0.14)",
+    background: "rgba(255,255,255,0.06)",
+    color: "white",
+    borderRadius: 14,
+    padding: "12px 14px",
+    cursor: "pointer",
+    fontWeight: 950,
+  },
+  checkoutBtn: {
+    border: "none",
+    background: "linear-gradient(135deg, #f59e0b, #ffcc66)",
+    color: "#111",
+    borderRadius: 14,
+    padding: "12px 14px",
+    cursor: "pointer",
+    fontWeight: 950,
+  },
+  note: { opacity: 0.65, fontWeight: 700, fontSize: 12, textAlign: "center" },
+};
+
+
+----------------------------------------------------
+15.6 client/src/components/MenuCard.jsx
+----------------------------------------------------
+
+import { useCart } from "../context/CartContext";
+
+export default function MenuCard({ item }) {
+  const { addToCart } = useCart();
+
+  return (
+    <div style={styles.card}>
+      <div style={styles.header}>
+        <div style={styles.emojiWrap}>
+          <span style={styles.emoji}>{item.emoji}</span>
+        </div>
+        <span style={styles.category}>{item.category}</span>
+      </div>
+
+      <h3 style={styles.title}>{item.name}</h3>
+      <p style={styles.desc}>{item.desc}</p>
+
+      <div style={styles.footer}>
+        <span style={styles.price}>Rs {item.price}</span>
+        <button style={styles.btn} onClick={() => addToCart(item)}>
+          Add
+        </button>
+      </div>
+    </div>
+  );
+}
+
+const styles = {
+  card: {
+    height: 230,
+    padding: 16,
+    borderRadius: 18,
+    background:
+      "linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.04))",
+    border: "1px solid rgba(255,255,255,0.14)",
+    backdropFilter: "blur(10px)",
+    boxShadow: "0 14px 40px rgba(0,0,0,0.35)",
+    transition: "transform .18s ease, border-color .18s ease",
+  },
+  header: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 10,
+  },
+  emojiWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    display: "grid",
+    placeItems: "center",
+    background: "rgba(245,158,11,0.16)",
+    border: "1px solid rgba(245,158,11,0.30)",
+  },
+  emoji: { fontSize: 22 },
+  category: {
+    fontSize: 12,
+    fontWeight: 900,
+    padding: "6px 10px",
+    borderRadius: 999,
+    background: "rgba(255,255,255,0.06)",
+    border: "1px solid rgba(255,255,255,0.14)",
+    color: "rgba(255,255,255,0.85)",
+  },
+  title: {
+    margin: "0 0 6px",
+    fontSize: 16,
+    fontWeight: 950,
+    letterSpacing: 0.2,
+  },
+  desc: {
+    margin: 0,
+    fontSize: 13,
+    lineHeight: 1.5,
+    color: "rgba(255,255,255,0.72)",
+    minHeight: 38,
+  },
+  footer: {
+    marginTop: 14,
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  price: { fontWeight: 950, color: "#f59e0b" },
+  btn: {
+    border: "none",
+    borderRadius: 14,
+    padding: "10px 14px",
+    background: "linear-gradient(135deg, #f59e0b, #ffcc66)",
+    color: "#111",
+    fontWeight: 950,
+    cursor: "pointer",
+  },
+};
+
+
+----------------------------------------------------
+15.7 client/src/pages/Menu.jsx
+----------------------------------------------------
+
+import { useMemo, useState } from "react";
+import MenuCard from "../components/MenuCard";
+import { menuData } from "../data/menuData";
+
+export default function Menu() {
+  const categories = useMemo(() => {
+    return ["All", ...new Set(menuData.map((i) => i.category))];
+  }, []);
+
+  const [active, setActive] = useState("All");
+  const [query, setQuery] = useState("");
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+
+    return menuData.filter((item) => {
+      const matchCategory = active === "All" || item.category === active;
+      const matchSearch =
+        q === "" ||
+        item.name.toLowerCase().includes(q) ||
+        item.desc.toLowerCase().includes(q);
+
+      return matchCategory && matchSearch;
+    });
+  }, [active, query]);
+
+  return (
+    <div style={{ padding: "40px 0" }}>
+      <div className="container">
+        <h1 style={{ marginBottom: 8 }}>Our Menu</h1>
+        <p style={{ color: "rgba(255,255,255,0.72)", marginTop: 0 }}>
+          Choose your favorite dish from our categories.
+        </p>
+
+        {/* Search Bar */}
+        <div style={styles.searchRow}>
+          <input
+            style={styles.searchInput}
+            type="text"
+            placeholder="Search dishes... (e.g. biryani, pizza)"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+          <button style={styles.clearBtn} onClick={() => setQuery("")}>
+            Clear
+          </button>
+        </div>
+
+        {/* Category Buttons */}
+        <div style={styles.tabs}>
+          {categories.map((c) => (
+            <button
+              key={c}
+              onClick={() => setActive(c)}
+              style={{
+                ...styles.tab,
+                ...(active === c ? styles.tabActive : {}),
+              }}
+            >
+              {c}
+            </button>
+          ))}
+        </div>
+
+        {/* Result Count */}
+        <div style={styles.count}>
+          Showing <b>{filtered.length}</b> items
+        </div>
+
+        {/* Cards Grid */}
+        <div style={styles.grid}>
+          {filtered.map((item) => (
+            <MenuCard key={item.id} item={item} />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const styles = {
+  searchRow: {
+    marginTop: 16,
+    display: "flex",
+    gap: 10,
+    flexWrap: "wrap",
+  },
+  searchInput: {
+    flex: 1,
+    minWidth: 240,
+    padding: "12px 14px",
+    borderRadius: 14,
+    border: "1px solid rgba(255,255,255,0.16)",
+    background: "rgba(255,255,255,0.06)",
+    color: "white",
+    outline: "none",
+    fontWeight: 700,
+  },
+  clearBtn: {
+    padding: "12px 14px",
+    borderRadius: 14,
+    border: "1px solid rgba(255,255,255,0.16)",
+    background: "rgba(255,255,255,0.06)",
+    color: "white",
+    cursor: "pointer",
+    fontWeight: 900,
+  },
+
+  tabs: {
+    marginTop: 18,
+    display: "flex",
+    gap: 10,
+    flexWrap: "wrap",
+  },
+  tab: {
+    background: "rgba(255,255,255,0.05)",
+    color: "rgba(255,255,255,0.85)",
+    border: "1px solid rgba(255,255,255,0.14)",
+    borderRadius: 999,
+    padding: "10px 14px",
+    fontWeight: 900,
+    cursor: "pointer",
+  },
+  tabActive: {
+    background: "rgba(245,158,11,0.18)",
+    borderColor: "rgba(245,158,11,0.45)",
+    color: "white",
+  },
+
+  count: {
+    marginTop: 14,
+    color: "rgba(255,255,255,0.72)",
+    fontWeight: 700,
+  },
+
+  grid: {
+    marginTop: 22,
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+    gap: 16,
+  },
+};
+
+
+----------------------------------------------------
+15.8 client/src/pages/Home.jsx
+----------------------------------------------------
+
+import Hero from "../components/home/Hero";
+import Categories from "../components/home/Categories";
+import Specials from "../components/home/Specials";
+import WhyChooseUs from "../components/home/WhyChooseUs";
+import Stats from "../components/home/Stats";
+import Reviews from "../components/home/Reviews";
+import Gallery from "../components/home/Gallery";
+
+export default function Home() {
+  return (
+    <div>
+      <Hero />
+      <Categories />
+      <Specials />
+      <WhyChooseUs />
+      <Stats />
+      <Reviews />
+      <Gallery />
+    </div>
+  );
+}
+
+
+----------------------------------------------------
+15.9 client/src/components/home/Hero.jsx
+----------------------------------------------------
+
+import { NavLink } from "react-router-dom";
+
+export default function Hero() {
+  return (
+    <section style={styles.hero}>
+      <div style={styles.overlay} />
+
+      <div className="container" style={styles.grid}>
+        <div style={{ position: "relative", zIndex: 2 }}>
+          <div style={styles.pill}>
+             Premium Taste • Cozy Vibe • Fresh Food
+          </div>
+
+          <h1 style={styles.h1}>
+            Experience <span style={styles.grad}>Restaurant-</span>
+            <br />
+            <span style={styles.grad2}>Level Taste</span>
+          </h1>
+
+          <p style={styles.p}>
+            Fresh ingredients, hygienic kitchen, and unforgettable flavors 
+            made daily with love.
+          </p>
+
+          <div style={styles.row}>
+            <NavLink to="/menu" className="btn btnPrimary">
+              View Menu →
+            </NavLink>
+            <NavLink to="/reservation" className="btn btnGhost">
+              Book Table
+            </NavLink>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+const styles = {
+  hero: {
+    position: "relative",
+    minHeight: "90vh",
+    display: "flex",
+    alignItems: "center",
+    backgroundImage: "url('/images/hero.jpg')",
+    backgroundSize: "cover",
+    backgroundPosition: "center",
+    backgroundRepeat: "no-repeat",
+  },
+
+  overlay: {
+    position: "absolute",
+    inset: 0,
+    background:
+      "linear-gradient(180deg, rgba(0,0,0,0.75), rgba(0,0,0,0.60), rgba(0,0,0,0.80))",
+  },
+
+  grid: {
+    position: "relative",
+    zIndex: 2,
+  },
+
+  pill: {
+    display: "inline-block",
+    padding: "10px 14px",
+    borderRadius: 999,
+    background: "rgba(255,255,255,0.08)",
+    border: "1px solid rgba(255,255,255,0.14)",
+    fontWeight: 900,
+  },
+
+  h1: {
+    fontSize: 60,
+    marginTop: 20,
+    lineHeight: 1.1,
+  },
+
+  grad: {
+    color: "#f59e0b",
+  },
+
+  grad2: {
+    color: "#ff4d6d",
+  },
+
+  p: {
+    marginTop: 18,
+    color: "rgba(255,255,255,0.85)",
+    fontSize: 18,
+    maxWidth: 600,
+  },
+
+  row: {
+    marginTop: 25,
+    display: "flex",
+    gap: 15,
+  },
+};
+
+
+----------------------------------------------------
+15.10 client/src/components/home/Categories.jsx
+----------------------------------------------------
+
+import { NavLink } from "react-router-dom";
+import fastfood from "../../assets/categories/fastfood.jpg";
+import maincourse from "../../assets/categories/maincourse.jpg";
+import bbq from "../../assets/categories/bbq.jpg";
+import desserts from "../../assets/categories/desserts.jpg";
+import drinks from "../../assets/categories/drinks.jpg";
+import salads from "../../assets/categories/salads.jpg";
+import seafood from "../../assets/categories/seafood.jpg";
+import breakfast from "../../assets/categories/breakfast.jpg";
+
+export default function Categories() {
+  const cats = [
+    { id: 1, title: "Fast Food", desc: "Burgers, pizza & fries", color: "#ff4d6d", image: fastfood },
+    { id: 2, title: "Main Course", desc: "Desi & continental", color: "#4facfe", image: maincourse },
+    { id: 3, title: "BBQ", desc: "Grilled & smoky", color: "#ff9a00", image: bbq },
+    { id: 4, title: "Desserts", desc: "Sweet delights", color: "#c471ed", image: desserts },
+    { id: 5, title: "Drinks", desc: "Cold & fresh", color: "#43e97b", image: drinks },
+    { id: 6, title: "Salads", desc: "Healthy bites", color: "#00c6ff", image: salads },
+    { id: 7, title: "Seafood", desc: "Fresh from ocean", color: "#22c55e", image: seafood },
+    { id: 8, title: "Breakfast", desc: "Morning specials", color: "#f97316", image: breakfast },
+  ];
+
+  return (
+    <section className="catSection">
+      <div className="catGlowLayer" />
+      <div className="catGlowLayer2" />
+      <div className="catGlowLayer3" />
+      <div className="catGrain" />
+
+      <div className="container" style={{ position: "relative", zIndex: 2 }}>
+        <div className="catHead">
+          <h2>Explore Categories</h2>
+          <p>Tap a category to explore menu faster.</p>
+        </div>
+
+        <div className="catGrid4">
+          {cats.map((c) => (
+            <NavLink
+              key={c.id}
+              to="/menu"
+              className="luxCard"
+              style={{ "--glow": c.color }}
+            >
+              <div
+                className="luxCardImage"
+                style={{ backgroundImage: `url(${c.image})` }}
+              />
+
+              <div className="luxCardContent">
+                <small className="luxDate">Popular Category</small>
+                <h3>{c.title}</h3>
+                <p>{c.desc}</p>
+              </div>
+
+              <div className="luxCardFooter">
+                <div>
+                  <strong>50+</strong>
+                  <span>Dishes</span>
+                </div>
+                <div>
+                  <strong>4.8</strong>
+                  <span>Rating</span>
+                </div>
+                <div>
+                  <strong>Top</strong>
+                  <span>Choice</span>
+                </div>
+              </div>
+            </NavLink>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+
+----------------------------------------------------
+15.11 client/src/components/home/Specials.jsx
+----------------------------------------------------
+
+import { NavLink } from "react-router-dom";
+
+export default function TodaysSpecials() {
+  const items = [
+    { id: 1, name: "Grilled Chicken", price: 1299, tag: "Best Seller", color: "#ff4d6d", img: "/images/specials/chicken.jpg" },
+    { id: 2, name: "Italian Pasta", price: 999, tag: "Chef Choice", color: "#4facfe", img: "/images/specials/pasta.jpg" },
+    { id: 3, name: "Cheese Burger", price: 899, tag: "Popular", color: "#ff9a00", img: "/images/specials/burger.jpg" },
+    { id: 4, name: "Pepperoni Pizza", price: 1499, tag: "New", color: "#c471ed", img: "/images/specials/pizza.jpg" },
+  ];
+
+  return (
+    <section className="specialsSection">
+      <div className="specialsGlow" />
+      <div className="specialsGlow2" />
+
+      <div className="container" style={{ position: "relative", zIndex: 2 }}>
+        <div className="specialsHead">
+          <h2>Today’s Specials</h2>
+          <p>Limited servings — grab your favorite!</p>
+        </div>
+
+        <div className="specialsGrid">
+          {items.map((it) => (
+            <div key={it.id} className="specialCard" style={{ "--glow": it.color }}>
+              <div
+                className="specialImg"
+                style={{
+                  backgroundImage: `url(${it.img})`,
+                }}
+              >
+                <span className="specialTag">{it.tag}</span>
+              </div>
+
+              <div className="specialBody">
+                <h3>{it.name}</h3>
+                <div className="specialPrice">Rs {it.price}</div>
+
+                <div className="specialBtns">
+                  <button className="specialBtnPrimary">Add to Cart</button>
+                  <NavLink to="/menu" className="specialBtnGhost">
+                    See Menu
+                  </NavLink>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+
+----------------------------------------------------
+15.12 client/src/components/home/WhyChooseUs.jsx
+----------------------------------------------------
+
+export default function WhyChooseUs() {
+  const features = [
+    {
+      icon: "🥗",
+      title: "Fresh Ingredients",
+      desc: "We use daily fresh and hygienic ingredients for premium taste."
+    },
+    {
+      icon: "⚡",
+      title: "Fast Service",
+      desc: "Quick preparation and serving without compromising quality."
+    },
+    {
+      icon: "👨‍🍳",
+      title: "Expert Chefs",
+      desc: "Our chefs have years of experience in fine dining."
+    },
+    {
+      icon: "🏆",
+      title: "Top Rated",
+      desc: "Rated 4.8+ by thousands of satisfied customers."
+    }
+  ];
+
+  return (
+    <section className="section">
+      <div className="container">
+        <div style={styles.header} className="fadeUp">
+          <h2 style={styles.title}>Why Choose Us</h2>
+          <p style={styles.subtitle}>
+            We don’t just serve food — we serve experience.
+          </p>
+        </div>
+
+        <div style={styles.grid}>
+          {features.map((item, index) => (
+            <div
+              key={index}
+              className="card fadeUp"
+              style={styles.card}
+            >
+              <div style={styles.icon}>{item.icon}</div>
+              <h3 style={styles.cardTitle}>{item.title}</h3>
+              <p style={styles.cardDesc}>{item.desc}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+const styles = {
+  header: {
+    textAlign: "center",
+    marginBottom: 30
+  },
+  title: {
+    fontSize: 34,
+    margin: 0
+  },
+  subtitle: {
+    marginTop: 10,
+    color: "rgba(255,255,255,0.75)",
+    fontWeight: 700
+  },
+  grid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+    gap: 16
+  },
+  card: {
+    padding: 20,
+    borderRadius: 18,
+    background:
+      "linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.04))",
+    border: "1px solid rgba(255,255,255,0.14)",
+    textAlign: "center",
+    transition: "transform .2s ease"
+  },
+  icon: {
+    fontSize: 40,
+    marginBottom: 12
+  },
+  cardTitle: {
+    margin: "6px 0",
+    fontWeight: 900
+  },
+  cardDesc: {
+    margin: 0,
+    fontSize: 14,
+    color: "rgba(255,255,255,0.72)",
+    lineHeight: 1.6
+  }
+};
+
+
+----------------------------------------------------
+15.13 client/src/components/home/Stats.jsx
+----------------------------------------------------
+
+import { useEffect, useMemo, useState } from "react";
+
+export default function Stats() {
+  const stats = useMemo(
+    () => [
+      { id: 1, label: "Happy Customers", value: 10000, suffix: "+" },
+      { id: 2, label: "Dishes Served", value: 500, suffix: "+" },
+      { id: 3, label: "Years Experience", value: 5, suffix: "+" },
+      { id: 4, label: "Average Rating", value: 4.8, suffix: "⭐" },
+    ],
+    []
+  );
+
+  return (
+    <section className="section" style={{ paddingTop: 0 }}>
+      <div className="container">
+        <div className="card fadeUp" style={styles.wrap}>
+          {stats.map((s) => (
+            <StatCard key={s.id} label={s.label} value={s.value} suffix={s.suffix} />
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function StatCard({ label, value, suffix }) {
+  const [display, setDisplay] = useState(0);
+
+  useEffect(() => {
+    // animate count up in ~900ms
+    const duration = 900;
+    const start = performance.now();
+
+    function tick(now) {
+      const progress = Math.min((now - start) / duration, 1);
+
+      // smooth easing
+      const eased = 1 - Math.pow(1 - progress, 3);
+
+      const current = value * eased;
+
+      // handle decimals (for rating)
+      const formatted =
+        Number.isInteger(value) ? Math.round(current) : Math.round(current * 10) / 10;
+
+      setDisplay(formatted);
+
+      if (progress < 1) requestAnimationFrame(tick);
+    }
+
+    const raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [value]);
+
+  return (
+    <div style={styles.item}>
+      <div style={styles.value}>
+        {display}
+        <span style={styles.suffix}>{suffix}</span>
+      </div>
+      <div style={styles.label}>{label}</div>
+    </div>
+  );
+}
+
+const styles = {
+  wrap: {
+    padding: 18,
+    borderRadius: 18,
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+    gap: 12,
+    background:
+      "linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.03))",
+    border: "1px solid rgba(255,255,255,0.12)",
+  },
+  item: {
+    padding: 16,
+    borderRadius: 16,
+    border: "1px solid rgba(255,255,255,0.10)",
+    background: "rgba(255,255,255,0.04)",
+    textAlign: "center",
+  },
+  value: {
+    fontSize: 34,
+    fontWeight: 950,
+    letterSpacing: 0.2,
+    background: "linear-gradient(135deg, #f59e0b, #ff4d6d)",
+    WebkitBackgroundClip: "text",
+    backgroundClip: "text",
+    color: "transparent",
+  },
+  suffix: {
+    marginLeft: 6,
+    fontSize: 18,
+    color: "rgba(255,255,255,0.75)",
+    fontWeight: 900,
+  },
+  label: {
+    marginTop: 8,
+    opacity: 0.78,
+    fontWeight: 800,
+  },
+};
+
+
+----------------------------------------------------
+15.14 client/src/components/home/Reviews.jsx
+----------------------------------------------------
+
+import { useEffect, useMemo, useState } from "react";
+
+export default function Reviews() {
+  const reviews = useMemo(
+    () => [
+      {
+        id: 1,
+        name: "Ali Khan",
+        role: "Food Lover",
+        text: "Amazing taste and fast service. Highly recommended!",
+        rating: 5,
+      },
+      {
+        id: 2,
+        name: "Sara Ahmed",
+        role: "Regular Customer",
+        text: "Best BBQ in town. The ambience is so cozy and elegant.",
+        rating: 5,
+      },
+      {
+        id: 3,
+        name: "Hassan Raza",
+        role: "Blogger",
+        text: "Loved the pasta and desserts. Super fresh and hygienic.",
+        rating: 4,
+      },
+      {
+        id: 4,
+        name: "Ayesha Noor",
+        role: "Family Visit",
+        text: "Great place for family dinners. Staff is polite and quick.",
+        rating: 5,
+      },
+      {
+        id: 5,
+        name: "Umer Farooq",
+        role: "Student",
+        text: "Affordable prices and great taste. The burgers are awesome!",
+        rating: 4,
+      },
+    ],
+    []
+  );
+
+  const [active, setActive] = useState(0);
+
+  useEffect(() => {
+    const t = setInterval(() => {
+      setActive((p) => (p + 1) % reviews.length);
+    }, 3200);
+    return () => clearInterval(t);
+  }, [reviews.length]);
+
+  function prev() {
+    setActive((p) => (p - 1 + reviews.length) % reviews.length);
+  }
+  function next() {
+    setActive((p) => (p + 1) % reviews.length);
+  }
+
+  // indices for left, center, right cards
+  const left = (active - 1 + reviews.length) % reviews.length;
+  const right = (active + 1) % reviews.length;
+
+  return (
+    <section style={styles.wrap}>
+      <div className="container">
+        <div style={styles.head} className="fadeUp">
+          <div style={styles.kicker}>Testimonials</div>
+          <h2 style={styles.h2}>What Customers Say</h2>
+          <p style={styles.p}>
+            Real reviews from people who love our food & service.
+          </p>
+        </div>
+
+        <div style={styles.slider} className="fadeUp delay1">
+          <button onClick={prev} style={styles.arrow} aria-label="Previous">
+            ‹
+          </button>
+
+          <div style={styles.cards}>
+            <ReviewCard review={reviews[left]} variant="side" />
+            <ReviewCard review={reviews[active]} variant="center" />
+            <ReviewCard review={reviews[right]} variant="side" />
+          </div>
+
+          <button onClick={next} style={styles.arrow} aria-label="Next">
+            ›
+          </button>
+        </div>
+
+        <div style={styles.dots} className="fadeUp delay2">
+          {reviews.map((_, i) => (
+            <button
+              key={i}
+              onClick={() => setActive(i)}
+              style={{
+                ...styles.dot,
+                ...(i === active ? styles.dotActive : {}),
+              }}
+              aria-label={`Go to review ${i + 1}`}
+            />
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function ReviewCard({ review, variant }) {
+  const isCenter = variant === "center";
+
+  return (
+    <div
+      style={{
+        ...styles.card,
+        ...(isCenter ? styles.cardCenter : styles.cardSide),
+      }}
+    >
+      <div style={styles.stars}>
+        {"⭐".repeat(review.rating)}
+        <span style={styles.starMuted}>
+          {"⭐".repeat(Math.max(0, 5 - review.rating))}
+        </span>
+      </div>
+
+      <p style={styles.text}>"{review.text}"</p>
+
+      <div style={styles.userRow}>
+        <div style={styles.avatar}>{review.name.slice(0, 1)}</div>
+        <div>
+          <div style={styles.name}>{review.name}</div>
+          <div style={styles.role}>{review.role}</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const styles = {
+  // ✅ Different theme strip
+  wrap: {
+    padding: "76px 0",
+    background:
+      "radial-gradient(900px 500px at 20% 20%, rgba(34,197,94,0.18), transparent 60%)," +
+      "radial-gradient(900px 500px at 80% 30%, rgba(59,130,246,0.18), transparent 60%)," +
+      "linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.00))",
+    borderTop: "1px solid rgba(255,255,255,0.08)",
+    borderBottom: "1px solid rgba(255,255,255,0.08)",
+  },
+  head: { textAlign: "center", marginBottom: 26 },
+  kicker: {
+    display: "inline-block",
+    padding: "8px 12px",
+    borderRadius: 999,
+    background: "rgba(255,255,255,0.06)",
+    border: "1px solid rgba(255,255,255,0.12)",
+    fontWeight: 900,
+    letterSpacing: 0.5,
+    opacity: 0.9,
+  },
+  h2: { fontSize: 34, margin: "12px 0 0" },
+  p: { marginTop: 10, color: "rgba(255,255,255,0.78)", fontWeight: 700 },
+
+  slider: {
+    display: "grid",
+    gridTemplateColumns: "44px 1fr 44px",
+    gap: 12,
+    alignItems: "center",
+  },
+  arrow: {
+    height: 44,
+    width: 44,
+    borderRadius: 14,
+    border: "1px solid rgba(255,255,255,0.14)",
+    background: "rgba(255,255,255,0.06)",
+    color: "white",
+    fontSize: 26,
+    fontWeight: 900,
+    cursor: "pointer",
+  },
+
+  cards: {
+    display: "grid",
+    gridTemplateColumns: "1fr 1.2fr 1fr",
+    gap: 14,
+    alignItems: "stretch",
+  },
+
+  card: {
+    borderRadius: 20,
+    padding: 18,
+    border: "1px solid rgba(255,255,255,0.14)",
+    background: "linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.03))",
+    boxShadow: "0 16px 50px rgba(0,0,0,0.40)",
+    transition: "transform .22s ease, border-color .22s ease, opacity .22s ease",
+  },
+  cardCenter: {
+    transform: "translateY(-6px)",
+    borderColor: "rgba(34,197,94,0.35)",
+  },
+  cardSide: {
+    opacity: 0.86,
+  },
+
+  stars: { fontSize: 18, marginBottom: 10 },
+  starMuted: { opacity: 0.35, marginLeft: 4 },
+
+  text: {
+    margin: 0,
+    color: "rgba(255,255,255,0.86)",
+    lineHeight: 1.65,
+    fontWeight: 650,
+    fontSize: 14,
+    minHeight: 70,
+  },
+
+  userRow: { marginTop: 14, display: "flex", gap: 10, alignItems: "center" },
+  avatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 14,
+    display: "grid",
+    placeItems: "center",
+    fontWeight: 950,
+    background: "rgba(34,197,94,0.18)",
+    border: "1px solid rgba(34,197,94,0.28)",
+  },
+  name: { fontWeight: 950 },
+  role: { marginTop: 2, opacity: 0.7, fontWeight: 700, fontSize: 12 },
+
+  dots: {
+    marginTop: 16,
+    display: "flex",
+    justifyContent: "center",
+    gap: 8,
+  },
+  dot: {
+    width: 10,
+    height: 10,
+    borderRadius: 999,
+    border: "1px solid rgba(255,255,255,0.18)",
+    background: "rgba(255,255,255,0.10)",
+    cursor: "pointer",
+  },
+  dotActive: {
+    width: 26,
+    background: "rgba(34,197,94,0.85)",
+    borderColor: "rgba(34,197,94,0.85)",
+  },
+};
+
+
+----------------------------------------------------
+15.15 client/src/components/home/Gallery.jsx
+----------------------------------------------------
+
+import { useMemo, useState } from "react";
+
+export default function Gallery() {
+  const dishes = useMemo(
+    () => [
+      {
+        id: 1,
+        title: "Classic Cheese Burger",
+        img: "https://source.unsplash.com/600x500/?burger",
+      },
+      {
+        id: 2,
+        title: "BBQ Chicken Platter",
+        img: "https://source.unsplash.com/600x500/?bbq,chicken",
+      },
+      {
+        id: 3,
+        title: "Pepperoni Pizza",
+        img: "https://source.unsplash.com/600x500/?pepperoni,pizza",
+      },
+      {
+        id: 4,
+        title: "Italian Pasta",
+        img: "https://source.unsplash.com/600x500/?pasta",
+      },
+      {
+        id: 5,
+        title: "Fresh Green Salad",
+        img: "https://source.unsplash.com/600x500/?salad",
+      },
+      {
+        id: 6,
+        title: "Chocolate Dessert",
+        img: "https://source.unsplash.com/600x500/?dessert",
+      },
+      {
+        id: 7,
+        title: "Cold Coffee",
+        img: "https://source.unsplash.com/600x500/?coffee",
+      },
+      {
+        id: 8,
+        title: "Grilled Steak",
+        img: "https://source.unsplash.com/600x500/?steak",
+      },
+    ],
+    []
+  );
+
+  const [active, setActive] = useState(null);
+
+  return (
+    <section className="section">
+      <div className="container">
+        <div style={styles.header}>
+          <h2 style={styles.title}>Our Signature Dishes</h2>
+          <p style={styles.subtitle}>
+            Delicious meals prepared with love and fresh ingredients.
+          </p>
+        </div>
+
+        <div style={styles.grid}>
+          {dishes.map((dish) => (
+            <div
+              key={dish.id}
+              className="galleryTile"
+              style={styles.card}
+              onClick={() => setActive(dish)}
+            >
+              <div style={styles.imageWrapper}>
+                <img
+                  src={dish.img}
+                  alt={dish.title}
+                  style={styles.image}
+                />
+                <div style={styles.overlay} />
+                <div style={styles.caption}>
+                  {dish.title}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Lightbox */}
+        {active && (
+          <div style={styles.lightbox} onClick={() => setActive(null)}>
+            <div style={styles.lightboxContent} onClick={(e) => e.stopPropagation()}>
+              <button style={styles.close} onClick={() => setActive(null)}>
+                ✕
+              </button>
+              <img src={active.img} alt={active.title} style={styles.largeImage} />
+              <h3 style={{ marginTop: 15 }}>{active.title}</h3>
+            </div>
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
+const styles = {
+  header: {
+    textAlign: "center",
+    marginBottom: 30,
+  },
+  title: {
+    fontSize: 34,
+    margin: 0,
+  },
+  subtitle: {
+    marginTop: 10,
+    color: "rgba(255,255,255,0.75)",
+    fontWeight: 700,
+  },
+  grid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+    gap: 16,
+  },
+  card: {
+    cursor: "pointer",
+    borderRadius: 18,
+    overflow: "hidden",
+    transition: "transform .3s ease",
+  },
+  imageWrapper: {
+    position: "relative",
+    height: 200,
+    borderRadius: 18,
+    overflow: "hidden",
+  },
+  image: {
+    width: "100%",
+    height: "100%",
+    objectFit: "cover",
+    transition: "transform .4s ease",
+  },
+  overlay: {
+    position: "absolute",
+    inset: 0,
+    background:
+      "linear-gradient(180deg, rgba(0,0,0,0.1), rgba(0,0,0,0.6))",
+  },
+  caption: {
+    position: "absolute",
+    bottom: 15,
+    left: 15,
+    right: 15,
+    color: "white",
+    fontWeight: 900,
+    fontSize: 16,
+  },
+  lightbox: {
+    position: "fixed",
+    inset: 0,
+    background: "rgba(0,0,0,0.8)",
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 100,
+  },
+  lightboxContent: {
+    background: "#111",
+    padding: 20,
+    borderRadius: 20,
+    textAlign: "center",
+    position: "relative",
+    maxWidth: "90%",
+  },
+  close: {
+    position: "absolute",
+    top: 10,
+    right: 10,
+    background: "transparent",
+    border: "none",
+    color: "white",
+    fontSize: 20,
+    cursor: "pointer",
+  },
+  largeImage: {
+    width: "100%",
+    maxHeight: "60vh",
+    objectFit: "cover",
+    borderRadius: 15,
+  },
+};
+
